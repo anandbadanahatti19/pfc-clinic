@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  RECEPTIONIST
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentMethod {
+  CASH
+  ONLINE
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  REFUNDED
+}
+
+enum FollowUpStatus {
+  PENDING
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(RECEPTIONIST)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  registeredPatients Patient[]
+  createdAppointments Appointment[]
+  receivedPayments   Payment[]
+  createdFollowUps   FollowUp[]
+
+  @@map("users")
+}
+
+model Patient {
+  id           String   @id @default(uuid())
+  name         String
+  phone        String
+  email        String?
+  age          Int?
+  gender       String?
+  medicalNotes String?  @map("medical_notes") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Who registered this patient
+  registeredBy   User?   @relation(fields: [registeredById], references: [id], onDelete: SetNull)
+  registeredById String? @map("registered_by")
+
+  // Relations
+  appointments  Appointment[]
+  payments      Payment[]
+  followUps     FollowUp[]
+
+  @@map("patients")
+}
+
+model Appointment {
+  id         String            @id @default(uuid())
+  date       DateTime          @db.Date
+  time       String            // "10:00", "10:30", etc.
+  type       String            // Consultation, IVF, Ultrasound, etc.
+  doctor     String            @default("Dr. Chandrika P. Kulkarni")
+  status     AppointmentStatus @default(SCHEDULED)
+  notes      String?           @db.Text
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId String  @map("patient_id")
+
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String? @map("created_by")
+
+  payments  Payment[]
+  followUps FollowUp[]
+
+  @@index([date, time])
+  @@map("appointments")
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  amount      Decimal       @db.Decimal(10, 2)
+  method      PaymentMethod
+  status      PaymentStatus @default(PAID)
+  receipt     String        @unique
+  description String?
+  date        DateTime      @default(now()) @map("payment_date")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId String  @map("patient_id")
+
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  appointmentId String?      @map("appointment_id")
+
+  receivedBy   User?   @relation(fields: [receivedById], references: [id], onDelete: SetNull)
+  receivedById String? @map("received_by")
+
+  @@index([date])
+  @@index([patientId])
+  @@map("payments")
+}
+
+model FollowUp {
+  id            String         @id @default(uuid())
+  scheduledDate DateTime       @map("scheduled_date") @db.Date
+  reason        String
+  status        FollowUpStatus @default(PENDING)
+  notes         String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId String  @map("patient_id")
+
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  appointmentId String?      @map("appointment_id")
+
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String? @map("created_by")
+
+  @@index([scheduledDate, status])
+  @@map("follow_ups")
+}
