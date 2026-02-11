@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Printer } from "lucide-react";
 
 type Payment = {
   id: string;
@@ -138,6 +138,7 @@ export default function PaymentsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="hidden md:table-cell">Description</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -183,11 +184,18 @@ export default function PaymentsPage() {
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {payment.description || "-"}
                     </TableCell>
+                    <TableCell>
+                      <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                        <Link href={`/payments/${payment.id}/receipt`}>
+                          <Printer className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {payments.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No payments found
                     </TableCell>
                   </TableRow>

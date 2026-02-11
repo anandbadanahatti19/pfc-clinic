@@ -66,8 +66,9 @@ export default function NewPaymentPage() {
         return;
       }
 
+      const data = await res.json();
       toast.success("Payment recorded successfully");
-      router.push("/payments");
+      router.push(`/payments/${data.payment.id}/receipt`);
     } catch {
       toast.error("Network error. Please try again.");
     } finally {
