@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Prisma, ItemCategory } from "@/lib/generated/prisma/client";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("pfc-token")?.value;
@@ -23,39 +23,19 @@ export async function GET(request: NextRequest) {
     ];
   }
 
-  if (category) {
-    where.category = category as Prisma.EnumItemCategoryFilter["equals"];
-  }
-
-  if (lowStock) {
-    where.OR = [
-      { quantity: { equals: 0 } },
-      {
-        quantity: { lte: prisma.$queryRaw`"min_quantity"` as unknown as number },
-      },
-    ];
-    // Use raw filter for comparing two columns
-    delete where.OR;
-    const items = await prisma.inventoryItem.findMany({
-      where: {
-        ...where,
-        OR: [
-          { quantity: { equals: 0 } },
-          // Prisma doesn't support column-to-column comparison directly,
-          // so we fetch all and filter in JS
-        ],
-      },
-      orderBy: { name: "asc" },
-    });
-
-    const filtered = items.filter((i) => i.quantity <= i.minQuantity);
-    return NextResponse.json({ items: filtered });
+  if (category && Object.values(ItemCategory).includes(category as ItemCategory)) {
+    where.category = category as ItemCategory;
   }
 
   const items = await prisma.inventoryItem.findMany({
     where,
     orderBy: { name: "asc" },
   });
+
+  if (lowStock) {
+    const filtered = items.filter((i) => i.quantity <= i.minQuantity);
+    return NextResponse.json({ items: filtered });
+  }
 
   return NextResponse.json({ items });
 }
