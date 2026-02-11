@@ -37,6 +37,21 @@ enum FollowUpStatus {
   CANCELLED
 }
 
+enum ItemCategory {
+  MEDICINE
+  CONSUMABLE
+  CLEANING
+  EQUIPMENT
+  OTHER
+}
+
+enum TransactionType {
+  STOCK_IN
+  USED
+  ADJUSTED
+  RETURNED
+}
+
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -48,10 +63,12 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  registeredPatients Patient[]
-  createdAppointments Appointment[]
-  receivedPayments   Payment[]
-  createdFollowUps   FollowUp[]
+  registeredPatients    Patient[]
+  createdAppointments   Appointment[]
+  receivedPayments      Payment[]
+  createdFollowUps      FollowUp[]
+  addedInventoryItems   InventoryItem[]
+  inventoryTransactions InventoryTransaction[]
 
   @@map("users")
 }
@@ -151,4 +168,45 @@ model FollowUp {
 
   @@index([scheduledDate, status])
   @@map("follow_ups")
+}
+
+model InventoryItem {
+  id          String       @id @default(uuid())
+  name        String
+  category    ItemCategory
+  unit        String       // e.g. "bottles", "boxes", "pcs"
+  quantity    Int          @default(0)
+  minQuantity Int          @map("min_quantity")
+  cost        Decimal?     @db.Decimal(10, 2)
+  supplier    String?
+  notes       String?      @db.Text
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  addedBy   User?   @relation(fields: [addedById], references: [id], onDelete: SetNull)
+  addedById String? @map("added_by")
+
+  transactions InventoryTransaction[]
+
+  @@map("inventory_items")
+}
+
+model InventoryTransaction {
+  id        String          @id @default(uuid())
+  type      TransactionType
+  quantity  Int             // positive = in, negative = out
+  reason    String?
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  item   InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId String        @map("item_id")
+
+  performedBy   User?   @relation(fields: [performedById], references: [id], onDelete: SetNull)
+  performedById String? @map("performed_by")
+
+  @@index([itemId, createdAt])
+  @@map("inventory_transactions")
 }

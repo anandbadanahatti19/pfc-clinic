@@ -16,6 +16,7 @@ import {
   Users,
   CreditCard,
   ClipboardList,
+  Package,
   Plus,
   ArrowRight,
   Loader2,
@@ -40,6 +41,7 @@ type DashboardStats = {
     patient: { id: string; name: string };
   }[];
   pendingFollowUpCount: number;
+  lowStockCount: number;
 };
 
 const statusVariant = (status: string) => {
@@ -96,6 +98,12 @@ export default function DashboardPage() {
       icon: ClipboardList,
       href: "/follow-ups",
     },
+    {
+      label: "Low Stock Items",
+      value: stats?.lowStockCount ?? "-",
+      icon: Package,
+      href: "/inventory?lowStock=true",
+    },
   ];
 
   return (
@@ -125,7 +133,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Link key={stat.label} href={stat.href}>
             <Card className="hover:shadow-md transition-shadow">

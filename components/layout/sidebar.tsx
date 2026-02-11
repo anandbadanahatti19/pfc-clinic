@@ -10,6 +10,7 @@ import {
   ClipboardList,
   CreditCard,
   BarChart3,
+  Package,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/follow-ups", label: "Follow-ups", icon: ClipboardList },
+  { href: "/inventory", label: "Inventory", icon: Package },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 

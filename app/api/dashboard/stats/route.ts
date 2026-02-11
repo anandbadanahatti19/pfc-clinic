@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     totalPatients,
     todayPayments,
     pendingFollowUps,
+    inventoryItems,
   ] = await Promise.all([
     prisma.appointment.findMany({
       where: { date: todayStart },
@@ -58,7 +59,15 @@ export async function GET(request: NextRequest) {
         },
       },
     }),
+    prisma.inventoryItem.findMany({
+      where: { isActive: true },
+      select: { quantity: true, minQuantity: true },
+    }),
   ]);
+
+  const lowStockCount = inventoryItems.filter(
+    (i) => i.quantity <= i.minQuantity
+  ).length;
 
   const todayCash = todayPayments
     .filter((p) => p.method === "CASH")
@@ -76,5 +85,6 @@ export async function GET(request: NextRequest) {
     todayOnline,
     pendingFollowUps,
     pendingFollowUpCount: pendingFollowUps.length,
+    lowStockCount,
   });
 }
