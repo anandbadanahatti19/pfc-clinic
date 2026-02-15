@@ -4,6 +4,8 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Loader2, Printer, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 type PaymentDetail = {
   id: string;
@@ -35,6 +37,8 @@ export default function ReceiptPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  useFeatureGuard("payments");
+  const { clinic } = useAuth();
   const [payment, setPayment] = useState<PaymentDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +75,10 @@ export default function ReceiptPage({
     month: "long",
     year: "numeric",
   });
+
+  const clinicName = clinic?.name || "Clinic";
+  const clinicTagline = clinic?.tagline || "";
+  const clinicPhone = clinic?.phone || "";
 
   return (
     <>
@@ -126,14 +134,16 @@ export default function ReceiptPage({
         {/* Header */}
         <div className="text-center border-b pb-4 mb-6">
           <h2 className="text-xl font-bold tracking-wide">
-            PRASHANTI FERTILITY CENTRE
+            {clinicName.toUpperCase()}
           </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Specialised in IVF, IUI, ICSI &amp; Fertility Treatments
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Contact: +91-XXXXXXXXXX
-          </p>
+          {clinicTagline && (
+            <p className="text-sm text-gray-600 mt-1">{clinicTagline}</p>
+          )}
+          {clinicPhone && (
+            <p className="text-xs text-gray-500 mt-1">
+              Contact: {clinicPhone}
+            </p>
+          )}
         </div>
 
         {/* Receipt title */}
@@ -243,7 +253,7 @@ export default function ReceiptPage({
         {/* Footer */}
         <div className="text-center text-xs text-gray-400 mt-8 pt-4 border-t">
           <p>This is a computer-generated receipt.</p>
-          <p>Thank you for choosing Prashanti Fertility Centre.</p>
+          <p>Thank you for choosing {clinicName}.</p>
         </div>
       </div>
     </>

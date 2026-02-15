@@ -14,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PFC - Prashanti Fertility Centre",
-  description:
-    "Clinic Management System for Prashanti Fertility Centre, Bengaluru",
+  title: "Clinic Management System",
+  description: "Multi-tenant clinic management platform",
 };
 
 export default function RootLayout({

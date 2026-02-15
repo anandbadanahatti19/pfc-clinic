@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = request.cookies.get("pfc-token")?.value;
-  const user = token ? await verifyToken(token) : null;
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "inventory");
+  if (featureCheck) return featureCheck;
   const { id } = await params;
+
+  // Verify item belongs to this clinic
+  const existingItem = await prisma.inventoryItem.findFirst({
+    where: { id, clinicId },
+    select: { id: true },
+  });
+
+  if (!existingItem) {
+    return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  }
 
   try {
     const body = await request.json();
@@ -78,7 +88,7 @@ export async function POST(
           type,
           quantity: delta,
           reason: reason || null,
-          performedById: user.userId,
+          performedById: auth.userId,
         },
         include: {
           performedBy: { select: { id: true, name: true } },

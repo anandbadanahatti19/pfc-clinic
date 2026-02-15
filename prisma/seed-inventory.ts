@@ -42,14 +42,19 @@ const items = [
 ];
 
 async function main() {
-  // Get the first admin user for addedBy
-  const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-  if (!admin) {
-    console.error("No admin user found. Please create an admin user first.");
+  // Get the first admin user and their clinic
+  const admin = await prisma.user.findFirst({
+    where: { role: "ADMIN", clinicId: { not: null } },
+    select: { id: true, clinicId: true },
+  });
+  if (!admin || !admin.clinicId) {
+    console.error("No admin user with a clinic found. Please run the main seed first.");
     process.exit(1);
   }
 
-  console.log(`Seeding inventory with ${items.length} items...`);
+  const clinicId = admin.clinicId;
+
+  console.log(`Seeding inventory with ${items.length} items for clinic ${clinicId}...`);
 
   for (const item of items) {
     const created = await prisma.inventoryItem.create({
@@ -62,6 +67,7 @@ async function main() {
         cost: item.cost,
         supplier: item.supplier,
         addedById: admin.id,
+        clinicId,
       },
     });
 

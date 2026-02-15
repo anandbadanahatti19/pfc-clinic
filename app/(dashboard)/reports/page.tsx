@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -45,6 +46,7 @@ type Payment = {
 };
 
 export default function ReportsPage() {
+  useFeatureGuard("reports");
   const today = new Date();
   const firstOfMonth = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}-01`;
   const todayStr = today.toISOString().split("T")[0];

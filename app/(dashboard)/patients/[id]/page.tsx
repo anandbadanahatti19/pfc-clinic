@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -72,6 +73,7 @@ export default function PatientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  useFeatureGuard("patients");
   const router = useRouter();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);

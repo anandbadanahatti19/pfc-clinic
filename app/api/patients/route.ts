@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "patients");
+  if (featureCheck) return featureCheck;
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
 
+  const where: Record<string, unknown> = { clinicId };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search } },
+    ];
+  }
+
   const patients = await prisma.patient.findMany({
-    where: search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { phone: { contains: search } },
-          ],
-        }
-      : undefined,
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -36,12 +39,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  const user = token ? await verifyToken(token) : null;
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "patients");
+  if (featureCheck) return featureCheck;
   try {
     const body = await request.json();
     const { name, phone, email, age, gender, medicalNotes } = body;
@@ -61,7 +64,8 @@ export async function POST(request: NextRequest) {
         age: age ? parseInt(age, 10) : null,
         gender: gender || null,
         medicalNotes: medicalNotes || null,
-        registeredById: user.userId,
+        registeredById: auth.userId,
+        clinicId,
       },
     });
 

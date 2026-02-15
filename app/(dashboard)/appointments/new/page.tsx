@@ -23,7 +23,9 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { APPOINTMENT_TYPES, DOCTORS, TIME_SLOTS } from "@/lib/constants";
+import { APPOINTMENT_TYPES } from "@/lib/constants";
+import { useAuth } from "@/lib/auth-context";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 type PatientOption = {
   id: string;
@@ -32,7 +34,9 @@ type PatientOption = {
 };
 
 export default function NewAppointmentPage() {
+  useFeatureGuard("appointments");
   const router = useRouter();
+  const { clinic } = useAuth();
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [form, setForm] = useState({
@@ -43,6 +47,9 @@ export default function NewAppointmentPage() {
     doctor: "",
     notes: "",
   });
+
+  const doctors = clinic?.doctors || [];
+  const timeSlots = clinic?.timeSlots || [];
 
   useEffect(() => {
     fetch("/api/patients")
@@ -140,7 +147,7 @@ export default function NewAppointmentPage() {
                     <SelectValue placeholder="Select time" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIME_SLOTS.map((t) => (
+                    {timeSlots.map((t) => (
                       <SelectItem key={t} value={t}>
                         {t}
                       </SelectItem>
@@ -183,7 +190,7 @@ export default function NewAppointmentPage() {
                     <SelectValue placeholder="Select doctor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DOCTORS.map((d) => (
+                    {doctors.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
+
+  const clinicId = auth.clinicId!;
 
   const now = new Date();
   const todayStart = new Date(
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     inventoryItems,
   ] = await Promise.all([
     prisma.appointment.findMany({
-      where: { date: todayStart },
+      where: { clinicId, date: todayStart },
       orderBy: { time: "asc" },
       select: {
         id: true,
@@ -36,9 +36,10 @@ export async function GET(request: NextRequest) {
         },
       },
     }),
-    prisma.patient.count(),
+    prisma.patient.count({ where: { clinicId } }),
     prisma.payment.findMany({
       where: {
+        clinicId,
         date: { gte: todayStart, lte: todayEnd },
       },
       select: {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.followUp.findMany({
-      where: { status: "PENDING" },
+      where: { clinicId, status: "PENDING" },
       orderBy: { scheduledDate: "asc" },
       take: 10,
       select: {
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.inventoryItem.findMany({
-      where: { isActive: true },
+      where: { clinicId, isActive: true },
       select: { quantity: true, minQuantity: true },
     }),
   ]);

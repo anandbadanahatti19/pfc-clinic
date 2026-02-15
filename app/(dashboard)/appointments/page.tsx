@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -52,6 +53,7 @@ const statusVariant = (status: string) => {
 };
 
 export default function AppointmentsPage() {
+  useFeatureGuard("appointments");
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(today);
   const [statusFilter, setStatusFilter] = useState("all");

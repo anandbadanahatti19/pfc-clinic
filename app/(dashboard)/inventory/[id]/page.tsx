@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
@@ -106,6 +107,7 @@ export default function InventoryDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  useFeatureGuard("inventory");
   const [item, setItem] = useState<InventoryItemDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

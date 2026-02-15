@@ -7,9 +7,14 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums ───
+
 enum Role {
+  SUPER_ADMIN
   ADMIN
   RECEPTIONIST
+  NURSE
+  LAB_TECHNICIAN
 }
 
 enum AppointmentStatus {
@@ -52,15 +57,53 @@ enum TransactionType {
   RETURNED
 }
 
+// ─── Clinic (Tenant) ───
+
+model Clinic {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  abbreviation    String
+  tagline         String?
+  phone           String?
+  email           String?
+  address         String?  @db.Text
+  city            String?
+  logoUrl         String?  @map("logo_url")
+  timeSlots       Json     @default("[]") @map("time_slots")
+  doctors         Json     @default("[]")
+  enabledFeatures Json     @default("{}") @map("enabled_features")
+  isActive        Boolean  @default(true) @map("is_active")
+  plan            String   @default("basic")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users          User[]
+  patients       Patient[]
+  appointments   Appointment[]
+  payments       Payment[]
+  followUps      FollowUp[]
+  inventoryItems InventoryItem[]
+
+  @@map("clinics")
+}
+
+// ─── Models ───
+
 model User {
   id        String   @id @default(uuid())
   name      String
-  email     String   @unique
+  email     String
   password  String
   role      Role     @default(RECEPTIONIST)
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Clinic relation (nullable for SUPER_ADMIN)
+  clinic   Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId String?  @map("clinic_id")
 
   // Relations
   registeredPatients    Patient[]
@@ -70,6 +113,8 @@ model User {
   addedInventoryItems   InventoryItem[]
   inventoryTransactions InventoryTransaction[]
 
+  @@unique([email, clinicId])
+  @@index([clinicId])
   @@map("users")
 }
 
@@ -84,15 +129,20 @@ model Patient {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // Clinic relation
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId String @map("clinic_id")
+
   // Who registered this patient
   registeredBy   User?   @relation(fields: [registeredById], references: [id], onDelete: SetNull)
   registeredById String? @map("registered_by")
 
   // Relations
-  appointments  Appointment[]
-  payments      Payment[]
-  followUps     FollowUp[]
+  appointments Appointment[]
+  payments     Payment[]
+  followUps    FollowUp[]
 
+  @@index([clinicId])
   @@map("patients")
 }
 
@@ -101,11 +151,15 @@ model Appointment {
   date       DateTime          @db.Date
   time       String            // "10:00", "10:30", etc.
   type       String            // Consultation, IVF, Ultrasound, etc.
-  doctor     String            @default("Dr. Chandrika P. Kulkarni")
+  doctor     String
   status     AppointmentStatus @default(SCHEDULED)
   notes      String?           @db.Text
   createdAt  DateTime          @default(now()) @map("created_at")
   updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  // Clinic relation
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId String @map("clinic_id")
 
   // Relations
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -117,7 +171,7 @@ model Appointment {
   payments  Payment[]
   followUps FollowUp[]
 
-  @@index([date, time])
+  @@index([clinicId, date, time])
   @@map("appointments")
 }
 
@@ -132,6 +186,10 @@ model Payment {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
+  // Clinic relation
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId String @map("clinic_id")
+
   // Relations
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   patientId String  @map("patient_id")
@@ -142,8 +200,8 @@ model Payment {
   receivedBy   User?   @relation(fields: [receivedById], references: [id], onDelete: SetNull)
   receivedById String? @map("received_by")
 
-  @@index([date])
-  @@index([patientId])
+  @@index([clinicId, date])
+  @@index([clinicId, patientId])
   @@map("payments")
 }
 
@@ -156,6 +214,10 @@ model FollowUp {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
+  // Clinic relation
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId String @map("clinic_id")
+
   // Relations
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   patientId String  @map("patient_id")
@@ -166,7 +228,7 @@ model FollowUp {
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdById String? @map("created_by")
 
-  @@index([scheduledDate, status])
+  @@index([clinicId, scheduledDate, status])
   @@map("follow_ups")
 }
 
@@ -184,12 +246,17 @@ model InventoryItem {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
+  // Clinic relation
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId String @map("clinic_id")
+
   // Relations
   addedBy   User?   @relation(fields: [addedById], references: [id], onDelete: SetNull)
   addedById String? @map("added_by")
 
   transactions InventoryTransaction[]
 
+  @@index([clinicId])
   @@map("inventory_items")
 }
 

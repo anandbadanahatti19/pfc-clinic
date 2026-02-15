@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,7 @@ type PatientOption = {
 };
 
 export default function NewPaymentPage() {
+  useFeatureGuard("payments");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<PatientOption[]>([]);

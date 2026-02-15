@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -11,18 +12,20 @@ import {
   CreditCard,
   BarChart3,
   Package,
+  UserCog,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/patients", label: "Patients", icon: Users },
-  { href: "/appointments", label: "Appointments", icon: CalendarDays },
-  { href: "/payments", label: "Payments", icon: CreditCard },
-  { href: "/follow-ups", label: "Follow-ups", icon: ClipboardList },
-  { href: "/inventory", label: "Inventory", icon: Package },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+const navItems: { href: string; label: string; icon: typeof LayoutDashboard; feature: string | null; adminOnly?: boolean }[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, feature: null },
+  { href: "/patients", label: "Patients", icon: Users, feature: "patients" },
+  { href: "/appointments", label: "Appointments", icon: CalendarDays, feature: "appointments" },
+  { href: "/payments", label: "Payments", icon: CreditCard, feature: "payments" },
+  { href: "/follow-ups", label: "Follow-ups", icon: ClipboardList, feature: "followups" },
+  { href: "/inventory", label: "Inventory", icon: Package, feature: "inventory" },
+  { href: "/reports", label: "Reports", icon: BarChart3, feature: "reports" },
+  { href: "/users", label: "Staff", icon: UserCog, feature: null, adminOnly: true },
 ];
 
 interface SidebarProps {
@@ -32,6 +35,12 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { clinic, user } = useAuth();
+
+  const abbreviation = clinic?.abbreviation || "CMS";
+  const nameParts = clinic?.name?.split(" ") || ["Clinic", "Management"];
+  const nameFirstLine = nameParts.slice(0, Math.ceil(nameParts.length / 2)).join(" ");
+  const nameSecondLine = nameParts.slice(Math.ceil(nameParts.length / 2)).join(" ");
 
   return (
     <>
@@ -52,14 +61,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-sm font-bold text-primary-foreground">
-                PFC
+                {abbreviation}
               </span>
             </div>
             <div className="leading-tight">
               <p className="text-sm font-semibold text-sidebar-foreground">
-                Prashanti
+                {nameFirstLine}
               </p>
-              <p className="text-xs text-muted-foreground">Fertility Centre</p>
+              <p className="text-xs text-muted-foreground">{nameSecondLine}</p>
             </div>
           </Link>
           <Button
@@ -73,7 +82,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems.filter((item) => {
+            if (item.adminOnly && user?.role !== "ADMIN") return false;
+            return !item.feature || clinic?.enabledFeatures[item.feature] !== false;
+          }).map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
             return (

@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = request.cookies.get("pfc-token")?.value;
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "payments");
+  if (featureCheck) return featureCheck;
   const { id } = await params;
 
-  const payment = await prisma.payment.findUnique({
-    where: { id },
+  const payment = await prisma.payment.findFirst({
+    where: { id, clinicId },
     select: {
       id: true,
       amount: true,

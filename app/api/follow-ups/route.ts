@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "followups");
+  if (featureCheck) return featureCheck;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { clinicId };
   if (status && status !== "all") {
     where.status = status.toUpperCase();
   }
@@ -38,12 +39,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  const user = token ? await verifyToken(token) : null;
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "followups");
+  if (featureCheck) return featureCheck;
   try {
     const body = await request.json();
     const { patientId, scheduledDate, reason, notes } = body;
@@ -55,13 +56,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Cross-tenant validation: ensure patient belongs to this clinic
+    const patient = await prisma.patient.findFirst({
+      where: { id: patientId, clinicId },
+      select: { id: true },
+    });
+    if (!patient) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
     const followUp = await prisma.followUp.create({
       data: {
         patientId,
         scheduledDate: new Date(scheduledDate + "T00:00:00.000Z"),
         reason,
         notes: notes || null,
-        createdById: user.userId,
+        createdById: auth.userId,
+        clinicId,
       },
     });
 

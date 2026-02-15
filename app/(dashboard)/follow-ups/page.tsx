@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -65,6 +66,7 @@ const statusVariant = (status: string) => {
 };
 
 export default function FollowUpsPage() {
+  useFeatureGuard("followups");
   const [statusFilter, setStatusFilter] = useState("all");
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);

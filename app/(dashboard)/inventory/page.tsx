@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -68,6 +69,7 @@ function getCategoryLabel(cat: string) {
 }
 
 export default function InventoryPage() {
+  useFeatureGuard("inventory");
   const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -31,6 +32,7 @@ type Patient = {
 };
 
 export default function PatientsPage() {
+  useFeatureGuard("patients");
   const [search, setSearch] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);

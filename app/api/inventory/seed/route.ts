@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 
 const items = [
   { name: "Progesterone Injection 50mg", category: "MEDICINE" as const, unit: "vials", quantity: 45, minQuantity: 10, cost: 320, supplier: "Sun Pharma" },
@@ -32,15 +32,19 @@ const items = [
 ];
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  const user = token ? await verifyToken(token) : null;
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 401 });
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
+
+  if (auth.role !== "ADMIN") {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "inventory");
+  if (featureCheck) return featureCheck;
   try {
-    // Check if inventory already has items
-    const existing = await prisma.inventoryItem.count();
+    // Check if inventory already has items for this clinic
+    const existing = await prisma.inventoryItem.count({ where: { clinicId } });
     if (existing > 0) {
       return NextResponse.json(
         { error: `Inventory already has ${existing} items. Delete them first if you want to re-seed.` },
@@ -59,7 +63,8 @@ export async function POST(request: NextRequest) {
           minQuantity: item.minQuantity,
           cost: item.cost,
           supplier: item.supplier,
-          addedById: user.userId,
+          addedById: auth.userId,
+          clinicId,
         },
       });
 
@@ -70,7 +75,7 @@ export async function POST(request: NextRequest) {
             type: "STOCK_IN",
             quantity: item.quantity,
             reason: "Initial stock",
-            performedById: user.userId,
+            performedById: auth.userId,
           },
         });
       }

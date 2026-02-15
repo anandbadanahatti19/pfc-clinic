@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -42,6 +43,7 @@ type Payment = {
 };
 
 export default function PaymentsPage() {
+  useFeatureGuard("payments");
   const [methodFilter, setMethodFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");

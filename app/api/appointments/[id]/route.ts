@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = request.cookies.get("pfc-token")?.value;
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "appointments");
+  if (featureCheck) return featureCheck;
   const { id } = await params;
+
+  // Verify ownership
+  const existing = await prisma.appointment.findFirst({
+    where: { id, clinicId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+  }
 
   try {
     const body = await request.json();

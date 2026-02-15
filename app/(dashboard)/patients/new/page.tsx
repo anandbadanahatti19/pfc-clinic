@@ -1,4 +1,5 @@
 "use client";
+import { useFeatureGuard } from "@/lib/feature-guard";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function NewPatientPage() {
+  useFeatureGuard("patients");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({

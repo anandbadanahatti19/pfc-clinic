@@ -3,6 +3,8 @@ import { SignJWT, jwtVerify } from "jose";
 
 const SALT_ROUNDS = 10;
 
+export const COOKIE_NAME = "clinic-session";
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS);
 }
@@ -24,7 +26,9 @@ export type TokenPayload = {
   userId: string;
   email: string;
   name: string;
-  role: "ADMIN" | "RECEPTIONIST";
+  role: "SUPER_ADMIN" | "ADMIN" | "RECEPTIONIST" | "NURSE" | "LAB_TECHNICIAN";
+  clinicId: string | null;
+  clinicSlug: string | null;
 };
 
 export async function signToken(payload: TokenPayload): Promise<string> {

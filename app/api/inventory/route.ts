@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { requireAuth, isAuthError, requireFeature } from "@/lib/api-auth";
 import { Prisma, ItemCategory } from "@/lib/generated/prisma/client";
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "inventory");
+  if (featureCheck) return featureCheck;
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
   const category = searchParams.get("category") || "";
   const lowStock = searchParams.get("lowStock") === "true";
 
-  const where: Prisma.InventoryItemWhereInput = { isActive: true };
+  const where: Prisma.InventoryItemWhereInput = { clinicId, isActive: true };
 
   if (search) {
     where.OR = [
@@ -41,12 +42,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("pfc-token")?.value;
-  const user = token ? await verifyToken(token) : null;
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
 
+  const clinicId = auth.clinicId!;
+  const featureCheck = await requireFeature(clinicId, "inventory");
+  if (featureCheck) return featureCheck;
   try {
     const body = await request.json();
     const { name, category, unit, quantity, minQuantity, cost, supplier, notes } = body;
@@ -68,7 +69,8 @@ export async function POST(request: NextRequest) {
         cost: cost ? new Prisma.Decimal(cost) : null,
         supplier: supplier || null,
         notes: notes || null,
-        addedById: user.userId,
+        addedById: auth.userId,
+        clinicId,
       },
     });
 
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
           type: "STOCK_IN",
           quantity: parseInt(quantity, 10),
           reason: "Initial stock",
-          performedById: user.userId,
+          performedById: auth.userId,
         },
       });
     }
