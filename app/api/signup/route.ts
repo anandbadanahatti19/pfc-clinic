@@ -130,9 +130,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: "Failed to create clinic. Please try again." },
+      { error: "Failed to create clinic. Please try again.", detail: message },
       { status: 500 }
     );
   }
